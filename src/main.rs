@@ -20,11 +20,10 @@ struct StopTimesParams {
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUST_LOG", "info");
     dotenv().ok(); // IMPORTANT
     env_logger::init();
 
-    info!("Starting web server");
+    println!("Starting web server");
 
     let pool = database::create_connection_pool();
     info!("Created database connection pool");

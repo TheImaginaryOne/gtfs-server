@@ -3,6 +3,7 @@ with sd as materialized (
 	select a.agency_id, series.t service_date_midnight from agency a
 		join lateral (
 			-- agency_timezone is a timezone string (like Pacific/Auckland)
+			-- date_trunc changes the time of the timestamp to 00:00
 			select t from generate_series(date_trunc('day', ($1 - '24 hours'::interval) at time zone a.agency_timezone) at time zone a.agency_timezone,
 			$2, '1 day'::interval) as t
 		) as series on true
@@ -24,7 +25,6 @@ with sd as materialized (
 	join trip on st.trip_id = trip.trip_id and st.feed_id = trip.feed_id
 	join route on trip.route_id = route.route_id and trip.feed_id = route.feed_id
 	join agency on route.agency_id = agency.agency_id and route.feed_id = agency.feed_id
-	-- date_trunc changes the time to 00:00
 	join sd
 	 	on route.agency_id = sd.agency_id
 		and st.departure_time >= extract (epoch from ($1 - sd.service_date_midnight))
