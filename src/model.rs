@@ -32,11 +32,3 @@ pub struct StopTimeByStop {
     #[sql_type = "Integer"]
     route_type: i32,
 }
-
-#[derive(Queryable, Debug, Identifiable)]
-#[primary_key(region_id)]
-#[table_name = "realtime_feed"]
-pub struct RealtimeFeed {
-    pub region_id: String,
-    pub url_config: String,
-}

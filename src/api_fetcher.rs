@@ -1,12 +1,9 @@
 use derive_more::{Display, From};
-use diesel::prelude::*;
 use futures::future::FutureExt;
 use log::{debug, error, info};
 use prost::Message;
 use std::collections::HashMap;
 
-use crate::database::ConnectionPool;
-use crate::model::RealtimeFeed;
 use crate::protobuf::gtfs_realtime::FeedMessage;
 
 #[derive(serde::Deserialize)]
@@ -20,38 +17,29 @@ enum RealtimeApiError {
     Reqwest(reqwest::Error),
     Decode(prost::DecodeError),
     Tokio(tokio::task::JoinError),
-    Diesel(diesel::result::Error),
+    Io(std::io::Error),
     ParseUrlConfig(toml::de::Error),
 }
 
-async fn get_realtime_feed_configs(
-    pool: ConnectionPool,
-) -> Result<HashMap<String, UrlConfig>, RealtimeApiError> {
-    use crate::schema::realtime_feed::dsl::*;
+async fn get_realtime_feed_config(path: &str) -> Result<UrlConfig, RealtimeApiError> {
+    let s = tokio::fs::read_to_string(path).await?;
 
-    let results: Vec<RealtimeFeed> = tokio::task::spawn_blocking(move || {
-        realtime_feed.load::<RealtimeFeed>(&pool.get().unwrap())
-    })
-    .await??;
+    let config = toml::from_str(&s)?;
 
-    let configs: HashMap<String, UrlConfig> = results
-        .into_iter()
-        .map(|r| Ok((r.region_id, toml::from_str(&r.url_config)?)))
-        .collect::<Result<_, RealtimeApiError>>()?;
-
-    debug!("Found {} realtime feed configs", configs.len());
-
-    Ok(configs)
+    Ok(config)
 }
 
-pub async fn fetch_data(pool: ConnectionPool) {
+pub async fn fetch_data() {
     let client = reqwest::Client::new();
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+
+    let realtime_config_filepath = std::env::var("REALTIME_CONFIG_FILEPATH")
+        .expect("REALTIME_CONFIG_FILEPATH must be defined");
 
     interval.tick().await; // 0 second tick
 
     loop {
-        let configs = match get_realtime_feed_configs(pool.clone()).await {
+        let config = match get_realtime_feed_config(&realtime_config_filepath).await {
             Ok(c) => c,
             Err(e) => {
                 error!("Error fetching gtfs realtime configs: {}", e);
@@ -61,39 +49,27 @@ pub async fn fetch_data(pool: ConnectionPool) {
         };
 
         let timer_future = interval.tick().fuse();
-        let request_futures = futures::future::join_all(
-            configs
-                .into_iter()
-                .map(|(k, config)| {
-                    let client = &client;
-                    async move {
-                        match send_request(client, &config).await {
-                            Ok(feed) => {
-                                debug!(
-                                    "Region {}: fetched {} entities from {}",
-                                    k,
-                                    feed.entity.len(),
-                                    config.url
-                                );
-                            }
-                            Err(e) => {
-                                error!("Region {}: Error fetching gtfs data: {}", k, e);
-                            }
-                        }
-                    }
-                })
-                .collect::<Vec<_>>(),
-        )
+        let c = client.clone();
+        let request_future = async move {
+            match send_request(&c, &config).await {
+                Ok(feed) => {
+                    debug!("Fetched {} entities from {}", feed.entity.len(), config.url);
+                }
+                Err(e) => {
+                    error!("Error fetching gtfs data: {}", e);
+                }
+            }
+        }
         .fuse();
 
-        futures::pin_mut!(timer_future, request_futures);
+        futures::pin_mut!(timer_future, request_future);
 
         info!("Fetching gtfs realtime data");
 
         #[allow(clippy::unnecessary_mut_passed)]
         loop {
             futures::select! {
-                response = request_futures => (),
+                response = request_future => (),
                 t = timer_future => break
             };
         }

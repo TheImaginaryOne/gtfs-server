@@ -42,13 +42,6 @@ table! {
 }
 
 table! {
-    realtime_feed (region_id) {
-        region_id -> Text,
-        url_config -> Text,
-    }
-}
-
-table! {
     route (feed_id, route_id) {
         feed_id -> Int4,
         route_id -> Text,
@@ -128,7 +121,6 @@ allow_tables_to_appear_in_same_query!(
     calendar,
     calendar_date,
     feed,
-    realtime_feed,
     route,
     shape,
     stop,

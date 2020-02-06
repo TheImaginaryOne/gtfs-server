@@ -30,8 +30,6 @@ async fn main() {
     let pool = database::create_connection_pool();
     info!("Created database connection pool");
 
-    let cloned_pool = pool.clone();
-
     // pass in a database connection pool
     let data = warp::any().map(move || pool.clone());
 
@@ -46,7 +44,7 @@ async fn main() {
 
     futures::future::join(
         warp::serve(times).run(([127, 0, 0, 1], 6789)),
-        api_fetcher::fetch_data(cloned_pool),
+        api_fetcher::fetch_data(),
     )
     .await;
 }
