@@ -76,7 +76,7 @@ async fn fetch_stop_times(
         diesel::sql_query(include_str!("sql_queries/stop_times.sql"))
             .bind::<Timestamptz, _>(a)
             .bind::<Timestamptz, _>(b)
-            .bind::<Text, _>(stop_code.clone())
+            .bind::<Text, _>(stop_code)
             .load(&connection)
             .map_err(|e| warp::reject::custom(ServerError::DbError(e)))?;
     #[derive(serde::Serialize, Debug)]

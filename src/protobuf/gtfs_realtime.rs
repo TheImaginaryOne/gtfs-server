@@ -10,10 +10,10 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FeedMessage {
     /// Metadata about this feed and feed message.
-    #[prost(message, required, tag = "1")]
+    #[prost(message, required, tag="1")]
     pub header: FeedHeader,
     /// Contents of the feed.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag="2")]
     pub entity: ::std::vec::Vec<FeedEntity>,
 }
 /// Metadata about a feed, included in feed messages.
@@ -21,19 +21,14 @@ pub struct FeedMessage {
 pub struct FeedHeader {
     /// Version of the feed specification.
     /// The current version is 2.0.
-    #[prost(string, required, tag = "1")]
+    #[prost(string, required, tag="1")]
     pub gtfs_realtime_version: std::string::String,
-    #[prost(
-        enumeration = "feed_header::Incrementality",
-        optional,
-        tag = "2",
-        default = "FullDataset"
-    )]
+    #[prost(enumeration="feed_header::Incrementality", optional, tag="2", default="FullDataset")]
     pub incrementality: ::std::option::Option<i32>,
     /// This timestamp identifies the moment when the content of this feed has been
     /// created (in server time). In POSIX time (i.e., number of seconds since
     /// January 1st 1970 00:00:00 UTC).
-    #[prost(uint64, optional, tag = "3")]
+    #[prost(uint64, optional, tag="3")]
     pub timestamp: ::std::option::Option<u64>,
 }
 pub mod feed_header {
@@ -60,19 +55,19 @@ pub struct FeedEntity {
     /// The actual GTFS entities (e.g. stations, routes, trips) referenced by the
     /// feed must be specified by explicit selectors (see EntitySelector below for
     /// more info).
-    #[prost(string, required, tag = "1")]
+    #[prost(string, required, tag="1")]
     pub id: std::string::String,
     /// Whether this entity is to be deleted. Relevant only for incremental
     /// fetches.
-    #[prost(bool, optional, tag = "2", default = "false")]
+    #[prost(bool, optional, tag="2", default="false")]
     pub is_deleted: ::std::option::Option<bool>,
     /// Data about the entity itself. Exactly one of the following fields must be
     /// present (unless the entity is being deleted).
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub trip_update: ::std::option::Option<TripUpdate>,
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag="4")]
     pub vehicle: ::std::option::Option<VehiclePosition>,
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag="5")]
     pub alert: ::std::option::Option<Alert>,
 }
 //
@@ -111,10 +106,10 @@ pub struct TripUpdate {
     /// TripUpdate entity for each actual trip instance.
     /// If there is none, that means there is no prediction information available.
     /// It does *not* mean that the trip is progressing according to schedule.
-    #[prost(message, required, tag = "1")]
+    #[prost(message, required, tag="1")]
     pub trip: TripDescriptor,
     /// Additional information on the vehicle that is serving this trip.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag="3")]
     pub vehicle: ::std::option::Option<VehicleDescriptor>,
     /// Updates to StopTimes for the trip (both future, i.e., predictions, and in
     /// some cases, past ones, i.e., those that already happened).
@@ -135,11 +130,11 @@ pub struct TripUpdate {
     /// - stop_sequences 3,4,5,6,7 have delay of 5 min.
     /// - stop_sequences 8,9 have delay of 1 min.
     /// - stop_sequences 10,... have unknown delay.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag="2")]
     pub stop_time_update: ::std::vec::Vec<trip_update::StopTimeUpdate>,
     /// Moment at which the vehicle's real-time progress was measured. In POSIX
     /// time (i.e., the number of seconds since January 1st 1970 00:00:00 UTC).
-    #[prost(uint64, optional, tag = "4")]
+    #[prost(uint64, optional, tag="4")]
     pub timestamp: ::std::option::Option<u64>,
     /// The current schedule deviation for the trip.  Delay should only be
     /// specified when the prediction is given relative to some existing schedule
@@ -159,7 +154,7 @@ pub struct TripUpdate {
     ///
     /// NOTE: This field is still experimental, and subject to change. It may be
     /// formally adopted in the future.
-    #[prost(int32, optional, tag = "5")]
+    #[prost(int32, optional, tag="5")]
     pub delay: ::std::option::Option<i32>,
 }
 pub mod trip_update {
@@ -183,18 +178,18 @@ pub mod trip_update {
         /// Delay (in seconds) can be positive (meaning that the vehicle is late) or
         /// negative (meaning that the vehicle is ahead of schedule). Delay of 0
         /// means that the vehicle is exactly on time.
-        #[prost(int32, optional, tag = "1")]
+        #[prost(int32, optional, tag="1")]
         pub delay: ::std::option::Option<i32>,
         /// Event as absolute time.
         /// In Unix time (i.e., number of seconds since January 1st 1970 00:00:00
         /// UTC).
-        #[prost(int64, optional, tag = "2")]
+        #[prost(int64, optional, tag="2")]
         pub time: ::std::option::Option<i64>,
         /// If uncertainty is omitted, it is interpreted as unknown.
         /// If the prediction is unknown or too uncertain, the delay (or time) field
         /// should be empty. In such case, the uncertainty field is ignored.
         /// To specify a completely certain prediction, set its uncertainty to 0.
-        #[prost(int32, optional, tag = "3")]
+        #[prost(int32, optional, tag="3")]
         pub uncertainty: ::std::option::Option<i32>,
     }
     /// Realtime update for arrival and/or departure events for a given stop on a
@@ -207,21 +202,16 @@ pub mod trip_update {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct StopTimeUpdate {
         /// Must be the same as in stop_times.txt in the corresponding GTFS feed.
-        #[prost(uint32, optional, tag = "1")]
+        #[prost(uint32, optional, tag="1")]
         pub stop_sequence: ::std::option::Option<u32>,
         /// Must be the same as in stops.txt in the corresponding GTFS feed.
-        #[prost(string, optional, tag = "4")]
+        #[prost(string, optional, tag="4")]
         pub stop_id: ::std::option::Option<std::string::String>,
-        #[prost(message, optional, tag = "2")]
+        #[prost(message, optional, tag="2")]
         pub arrival: ::std::option::Option<StopTimeEvent>,
-        #[prost(message, optional, tag = "3")]
+        #[prost(message, optional, tag="3")]
         pub departure: ::std::option::Option<StopTimeEvent>,
-        #[prost(
-            enumeration = "stop_time_update::ScheduleRelationship",
-            optional,
-            tag = "5",
-            default = "Scheduled"
-        )]
+        #[prost(enumeration="stop_time_update::ScheduleRelationship", optional, tag="5", default="Scheduled")]
         pub schedule_relationship: ::std::option::Option<i32>,
     }
     pub mod stop_time_update {
@@ -253,40 +243,35 @@ pub struct VehiclePosition {
     /// The Trip that this vehicle is serving.
     /// Can be empty or partial if the vehicle can not be identified with a given
     /// trip instance.
-    #[prost(message, optional, tag = "1")]
+    #[prost(message, optional, tag="1")]
     pub trip: ::std::option::Option<TripDescriptor>,
     /// Additional information on the vehicle that is serving this trip.
-    #[prost(message, optional, tag = "8")]
+    #[prost(message, optional, tag="8")]
     pub vehicle: ::std::option::Option<VehicleDescriptor>,
     /// Current position of this vehicle.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag="2")]
     pub position: ::std::option::Option<Position>,
     /// The stop sequence index of the current stop. The meaning of
     /// current_stop_sequence (i.e., the stop that it refers to) is determined by
     /// current_status.
     /// If current_status is missing IN_TRANSIT_TO is assumed.
-    #[prost(uint32, optional, tag = "3")]
+    #[prost(uint32, optional, tag="3")]
     pub current_stop_sequence: ::std::option::Option<u32>,
     /// Identifies the current stop. The value must be the same as in stops.txt in
     /// the corresponding GTFS feed.
-    #[prost(string, optional, tag = "7")]
+    #[prost(string, optional, tag="7")]
     pub stop_id: ::std::option::Option<std::string::String>,
     /// The exact status of the vehicle with respect to the current stop.
     /// Ignored if current_stop_sequence is missing.
-    #[prost(
-        enumeration = "vehicle_position::VehicleStopStatus",
-        optional,
-        tag = "4",
-        default = "InTransitTo"
-    )]
+    #[prost(enumeration="vehicle_position::VehicleStopStatus", optional, tag="4", default="InTransitTo")]
     pub current_status: ::std::option::Option<i32>,
     /// Moment at which the vehicle's position was measured. In POSIX time
     /// (i.e., number of seconds since January 1st 1970 00:00:00 UTC).
-    #[prost(uint64, optional, tag = "5")]
+    #[prost(uint64, optional, tag="5")]
     pub timestamp: ::std::option::Option<u64>,
-    #[prost(enumeration = "vehicle_position::CongestionLevel", optional, tag = "6")]
+    #[prost(enumeration="vehicle_position::CongestionLevel", optional, tag="6")]
     pub congestion_level: ::std::option::Option<i32>,
-    #[prost(enumeration = "vehicle_position::OccupancyStatus", optional, tag = "9")]
+    #[prost(enumeration="vehicle_position::OccupancyStatus", optional, tag="9")]
     pub occupancy_status: ::std::option::Option<i32>,
 }
 pub mod vehicle_position {
@@ -349,34 +334,24 @@ pub struct Alert {
     /// Time when the alert should be shown to the user. If missing, the
     /// alert will be shown as long as it appears in the feed.
     /// If multiple ranges are given, the alert will be shown during all of them.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub active_period: ::std::vec::Vec<TimeRange>,
     /// Entities whose users we should notify of this alert.
-    #[prost(message, repeated, tag = "5")]
+    #[prost(message, repeated, tag="5")]
     pub informed_entity: ::std::vec::Vec<EntitySelector>,
-    #[prost(
-        enumeration = "alert::Cause",
-        optional,
-        tag = "6",
-        default = "UnknownCause"
-    )]
+    #[prost(enumeration="alert::Cause", optional, tag="6", default="UnknownCause")]
     pub cause: ::std::option::Option<i32>,
-    #[prost(
-        enumeration = "alert::Effect",
-        optional,
-        tag = "7",
-        default = "UnknownEffect"
-    )]
+    #[prost(enumeration="alert::Effect", optional, tag="7", default="UnknownEffect")]
     pub effect: ::std::option::Option<i32>,
     /// The URL which provides additional information about the alert.
-    #[prost(message, optional, tag = "8")]
+    #[prost(message, optional, tag="8")]
     pub url: ::std::option::Option<TranslatedString>,
     /// Alert header. Contains a short summary of the alert text as plain-text.
-    #[prost(message, optional, tag = "10")]
+    #[prost(message, optional, tag="10")]
     pub header_text: ::std::option::Option<TranslatedString>,
     /// Full description for the alert as plain-text. The information in the
     /// description should add to the information of the header.
-    #[prost(message, optional, tag = "11")]
+    #[prost(message, optional, tag="11")]
     pub description_text: ::std::option::Option<TranslatedString>,
 }
 pub mod alert {
@@ -429,35 +404,35 @@ pub struct TimeRange {
     /// Start time, in POSIX time (i.e., number of seconds since January 1st 1970
     /// 00:00:00 UTC).
     /// If missing, the interval starts at minus infinity.
-    #[prost(uint64, optional, tag = "1")]
+    #[prost(uint64, optional, tag="1")]
     pub start: ::std::option::Option<u64>,
     /// End time, in POSIX time (i.e., number of seconds since January 1st 1970
     /// 00:00:00 UTC).
     /// If missing, the interval ends at plus infinity.
-    #[prost(uint64, optional, tag = "2")]
+    #[prost(uint64, optional, tag="2")]
     pub end: ::std::option::Option<u64>,
 }
 /// A position.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Position {
     /// Degrees North, in the WGS-84 coordinate system.
-    #[prost(float, required, tag = "1")]
+    #[prost(float, required, tag="1")]
     pub latitude: f32,
     /// Degrees East, in the WGS-84 coordinate system.
-    #[prost(float, required, tag = "2")]
+    #[prost(float, required, tag="2")]
     pub longitude: f32,
     /// Bearing, in degrees, clockwise from North, i.e., 0 is North and 90 is East.
     /// This can be the compass bearing, or the direction towards the next stop
     /// or intermediate location.
     /// This should not be direction deduced from the sequence of previous
     /// positions, which can be computed from previous data.
-    #[prost(float, optional, tag = "3")]
+    #[prost(float, optional, tag="3")]
     pub bearing: ::std::option::Option<f32>,
     /// Odometer value, in meters.
-    #[prost(double, optional, tag = "4")]
+    #[prost(double, optional, tag="4")]
     pub odometer: ::std::option::Option<f64>,
     /// Momentary speed measured by the vehicle, in meters per second.
-    #[prost(float, optional, tag = "5")]
+    #[prost(float, optional, tag="5")]
     pub speed: ::std::option::Option<f32>,
 }
 /// A descriptor that identifies an instance of a GTFS trip, or all instances of
@@ -475,16 +450,16 @@ pub struct TripDescriptor {
     /// For non frequency-based trips, this field is enough to uniquely identify
     /// the trip. For frequency-based trip, start_time and start_date might also be
     /// necessary.
-    #[prost(string, optional, tag = "1")]
+    #[prost(string, optional, tag="1")]
     pub trip_id: ::std::option::Option<std::string::String>,
     /// The route_id from the GTFS that this selector refers to.
-    #[prost(string, optional, tag = "5")]
+    #[prost(string, optional, tag="5")]
     pub route_id: ::std::option::Option<std::string::String>,
     /// The direction_id from the GTFS feed trips.txt file, indicating the
     /// direction of travel for trips this selector refers to. This field is
     /// still experimental, and subject to change. It may be formally adopted in
     /// the future.
-    #[prost(uint32, optional, tag = "6")]
+    #[prost(uint32, optional, tag="6")]
     pub direction_id: ::std::option::Option<u32>,
     /// The initially scheduled start time of this trip instance.
     /// When the trip_id corresponds to a non-frequency-based trip, this field
@@ -501,7 +476,7 @@ pub struct TripDescriptor {
     /// StopTimeUpdate.
     /// Format and semantics of the field is same as that of
     /// GTFS/frequencies.txt/start_time, e.g., 11:15:35 or 25:15:35.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string, optional, tag="2")]
     pub start_time: ::std::option::Option<std::string::String>,
     /// The scheduled start date of this trip instance.
     /// Must be provided to disambiguate trips that are so late as to collide with
@@ -513,13 +488,9 @@ pub struct TripDescriptor {
     /// schedule where a vehicle that is one hour late is not considered to be
     /// related to schedule anymore.
     /// In YYYYMMDD format.
-    #[prost(string, optional, tag = "3")]
+    #[prost(string, optional, tag="3")]
     pub start_date: ::std::option::Option<std::string::String>,
-    #[prost(
-        enumeration = "trip_descriptor::ScheduleRelationship",
-        optional,
-        tag = "4"
-    )]
+    #[prost(enumeration="trip_descriptor::ScheduleRelationship", optional, tag="4")]
     pub schedule_relationship: ::std::option::Option<i32>,
 }
 pub mod trip_descriptor {
@@ -549,14 +520,14 @@ pub struct VehicleDescriptor {
     /// Internal system identification of the vehicle. Should be unique per
     /// vehicle, and can be used for tracking the vehicle as it proceeds through
     /// the system.
-    #[prost(string, optional, tag = "1")]
+    #[prost(string, optional, tag="1")]
     pub id: ::std::option::Option<std::string::String>,
     /// User visible label, i.e., something that must be shown to the passenger to
     /// help identify the correct vehicle.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string, optional, tag="2")]
     pub label: ::std::option::Option<std::string::String>,
     /// The license plate of the vehicle.
-    #[prost(string, optional, tag = "3")]
+    #[prost(string, optional, tag="3")]
     pub license_plate: ::std::option::Option<std::string::String>,
 }
 /// A selector for an entity in a GTFS feed.
@@ -566,16 +537,16 @@ pub struct EntitySelector {
     /// GTFS feed.
     /// At least one specifier must be given. If several are given, then the
     /// matching has to apply to all the given specifiers.
-    #[prost(string, optional, tag = "1")]
+    #[prost(string, optional, tag="1")]
     pub agency_id: ::std::option::Option<std::string::String>,
-    #[prost(string, optional, tag = "2")]
+    #[prost(string, optional, tag="2")]
     pub route_id: ::std::option::Option<std::string::String>,
     /// corresponds to route_type in GTFS.
-    #[prost(int32, optional, tag = "3")]
+    #[prost(int32, optional, tag="3")]
     pub route_type: ::std::option::Option<i32>,
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag="4")]
     pub trip: ::std::option::Option<TripDescriptor>,
-    #[prost(string, optional, tag = "5")]
+    #[prost(string, optional, tag="5")]
     pub stop_id: ::std::option::Option<std::string::String>,
 }
 /// An internationalized message containing per-language versions of a snippet of
@@ -591,19 +562,19 @@ pub struct EntitySelector {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TranslatedString {
     /// At least one translation must be provided.
-    #[prost(message, repeated, tag = "1")]
+    #[prost(message, repeated, tag="1")]
     pub translation: ::std::vec::Vec<translated_string::Translation>,
 }
 pub mod translated_string {
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Translation {
         /// A UTF-8 string containing the message.
-        #[prost(string, required, tag = "1")]
+        #[prost(string, required, tag="1")]
         pub text: std::string::String,
         /// BCP-47 language code. Can be omitted if the language is unknown or if
         /// no i18n is done at all for the feed. At most one translation is
         /// allowed to have an unspecified language tag.
-        #[prost(string, optional, tag = "2")]
+        #[prost(string, optional, tag="2")]
         pub language: ::std::option::Option<std::string::String>,
     }
 }

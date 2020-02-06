@@ -17,11 +17,11 @@ struct UrlConfig {
 
 #[derive(From, Display)]
 enum RealtimeApiError {
-    ReqwestError(reqwest::Error),
-    DecodeError(prost::DecodeError),
-    TokioError(tokio::task::JoinError),
-    DieselError(diesel::result::Error),
-    ParseUrlConfigError(toml::de::Error),
+    Reqwest(reqwest::Error),
+    Decode(prost::DecodeError),
+    Tokio(tokio::task::JoinError),
+    Diesel(diesel::result::Error),
+    ParseUrlConfig(toml::de::Error),
 }
 
 async fn get_realtime_feed_configs(
@@ -90,6 +90,7 @@ pub async fn fetch_data(pool: ConnectionPool) {
 
         info!("Fetching gtfs realtime data");
 
+        #[allow(clippy::unnecessary_mut_passed)]
         loop {
             futures::select! {
                 response = request_futures => (),

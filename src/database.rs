@@ -7,7 +7,7 @@ pub fn create_connection_pool() -> ConnectionPool {
     let manager = ConnectionManager::<DbConnection>::new(url);
     Pool::builder()
         .build(manager)
-        .expect(&format!("Could not create pool for database: {}", &url))
+        .unwrap_or_else(|_| panic!("Could not create pool for database: {}", &url))
 }
 
 pub type DbConnection = PgConnection;
