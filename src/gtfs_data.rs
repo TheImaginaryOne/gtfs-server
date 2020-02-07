@@ -1,24 +1,29 @@
 use crate::protobuf::gtfs_realtime::{FeedMessage, TripUpdate, VehicleDescriptor};
 use chrono::NaiveDate;
 use log::warn;
-use std::borrow::Cow;
-use std::collections::HashMap;
+// used because Equivalent trait is more flexible than Borrow trait.
+use indexmap::{IndexMap, Equivalent};
 
 #[derive(PartialEq, Eq, Hash)]
-struct TripUpdateKey<'a> {
-    start_date: NaiveDate,
-    trip_id: Cow<'a, str>,
+struct TripUpdateKey(NaiveDate, String);
+#[derive(PartialEq, Eq, Hash)]
+struct TripUpdateKeyRef<'a>(NaiveDate, &'a str);
+
+impl Equivalent<TripUpdateKey> for TripUpdateKeyRef<'_> {
+    fn equivalent(&self, k: &TripUpdateKey) -> bool {
+        self.0 == k.0 && self.1 == k.1
+    }
 }
 
-pub struct RealtimeUpdateManager<'a> {
-    trip_updates: HashMap<TripUpdateKey<'a>, TripUpdate>,
+pub struct RealtimeUpdateManager {
+    trip_updates: IndexMap<TripUpdateKey, TripUpdate>,
 }
 
 #[allow(dead_code)]
-impl<'a> RealtimeUpdateManager<'a> {
+impl RealtimeUpdateManager {
     pub fn new() -> Self {
         Self {
-            trip_updates: HashMap::new(),
+            trip_updates: IndexMap::new(),
         }
     }
     pub fn load_feed(&mut self, feed: FeedMessage) {
@@ -47,23 +52,18 @@ impl<'a> RealtimeUpdateManager<'a> {
                     }
                 };
 
-                self.trip_updates.insert(
-                    TripUpdateKey {
-                        start_date,
-                        trip_id: trip_id.into(),
-                    },
-                    trip_update,
-                );
+                self.trip_updates
+                    .insert(TripUpdateKey(start_date, trip_id.clone()), trip_update);
             }
         }
     }
     pub fn get_realtime_data(&self, keys: Vec<RealtimeQueryKey>) -> Vec<RealtimeUpdate> {
         keys.iter()
             .map(|key| {
-                match self.trip_updates.get(&TripUpdateKey {
-                    start_date: key.start_date,
-                    trip_id: Cow::Borrowed(&key.trip_id),
-                }) {
+                match self
+                    .trip_updates
+                    .get(&TripUpdateKeyRef(key.start_date, &key.trip_id))
+                {
                     Some(trip_update) => {
                         let mut realtime_data = RealtimeUpdate {
                             delay: None,

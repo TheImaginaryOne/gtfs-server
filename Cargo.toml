@@ -20,6 +20,7 @@ futures = "0.3"
 prost = "0.6"
 reqwest = "0.10"
 toml = "0.5"
+indexmap = "1.3.2"
 
 [build-dependencies]
 prost-build = "0.6"
