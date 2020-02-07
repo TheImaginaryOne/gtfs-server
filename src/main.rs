@@ -3,6 +3,7 @@ extern crate diesel;
 
 mod api_fetcher;
 mod database;
+mod gtfs_data;
 mod model;
 mod protobuf;
 mod schema;
