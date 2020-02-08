@@ -2,7 +2,7 @@ use crate::protobuf::gtfs_realtime::{FeedMessage, TripUpdate, VehicleDescriptor}
 use chrono::NaiveDate;
 use log::warn;
 // used because Equivalent trait is more flexible than Borrow trait.
-use indexmap::{IndexMap, Equivalent};
+use indexmap::{Equivalent, IndexMap};
 
 #[derive(PartialEq, Eq, Hash)]
 struct TripUpdateKey(NaiveDate, String);
@@ -57,8 +57,11 @@ impl RealtimeUpdateManager {
             }
         }
     }
-    pub fn get_realtime_data(&self, keys: Vec<RealtimeQueryKey>) -> Vec<RealtimeUpdate> {
-        keys.iter()
+    pub fn get_realtime_updates<'a, I: IntoIterator<Item = RealtimeQueryKey<'a>>>(
+        &self,
+        keys: I,
+    ) -> Vec<RealtimeUpdate> {
+        keys.into_iter()
             .map(|key| {
                 match self
                     .trip_updates
@@ -105,10 +108,10 @@ impl RealtimeUpdateManager {
 }
 
 /// Any better name?
-pub struct RealtimeQueryKey {
-    start_date: NaiveDate,
-    trip_id: String,
-    stop_sequence: u32,
+pub struct RealtimeQueryKey<'a> {
+    pub start_date: NaiveDate,
+    pub trip_id: &'a str,
+    pub stop_sequence: u32,
 }
 
 #[derive(PartialEq, Debug)]
@@ -160,7 +163,7 @@ mod tests {
     fn r(start_date: NaiveDate, ti: &str, stop_sequence: u32) -> RealtimeQueryKey {
         RealtimeQueryKey {
             start_date,
-            trip_id: ti.into(),
+            trip_id: ti,
             stop_sequence,
         }
     }
@@ -207,7 +210,7 @@ mod tests {
         let mut m = RealtimeUpdateManager::new();
         m.load_feed(feed);
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 1)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 1)]),
             vec![RealtimeUpdate {
                 delay: None,
                 schedule_relationship: None,
@@ -215,7 +218,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 3)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 3)]),
             vec![RealtimeUpdate {
                 delay: Some(20),
                 schedule_relationship: None,
@@ -223,7 +226,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 5)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 5)]),
             vec![RealtimeUpdate {
                 delay: Some(-10),
                 schedule_relationship: None,
@@ -232,7 +235,7 @@ mod tests {
         );
 
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip2", 3)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip2", 3)]),
             vec![RealtimeUpdate {
                 delay: Some(180),
                 schedule_relationship: Some(0),
@@ -241,7 +244,7 @@ mod tests {
         );
         // different date
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 2), "trip1", 5)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 2), "trip1", 5)]),
             vec![RealtimeUpdate {
                 delay: None,
                 schedule_relationship: None,
@@ -260,7 +263,7 @@ mod tests {
         m.load_feed(feed);
 
         assert_eq!(
-            m.get_realtime_data(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 2)]),
+            m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 2)]),
             vec![RealtimeUpdate {
                 delay: None,
                 schedule_relationship: None,
