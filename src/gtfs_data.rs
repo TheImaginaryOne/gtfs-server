@@ -3,6 +3,7 @@ use chrono::NaiveDate;
 use log::warn;
 // used because Equivalent trait is more flexible than Borrow trait.
 use indexmap::{Equivalent, IndexMap};
+use serde::Serialize;
 
 #[derive(PartialEq, Eq, Hash)]
 struct TripUpdateKey(NaiveDate, String);
@@ -63,6 +64,7 @@ impl RealtimeUpdateManager {
     ) -> Vec<RealtimeUpdate> {
         keys.into_iter()
             .map(|key| {
+                dbg!(key.start_date, &key.trip_id);
                 match self
                     .trip_updates
                     .get(&TripUpdateKeyRef(key.start_date, &key.trip_id))
@@ -114,7 +116,7 @@ pub struct RealtimeQueryKey<'a> {
     pub stop_sequence: u32,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize)]
 pub struct RealtimeUpdate {
     /// The delay in seconds.
     pub delay: Option<i32>,

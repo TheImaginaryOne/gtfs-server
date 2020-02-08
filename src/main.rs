@@ -12,8 +12,11 @@ use log::{debug, info};
 use serde::Deserialize;
 use warp::Filter;
 
+use crate::gtfs_data::{RealtimeQueryKey, RealtimeUpdateManager, RealtimeUpdate};
 use database::ConnectionPool;
 use dotenv::dotenv;
+
+use std::sync::{Arc, Mutex};
 
 #[derive(Deserialize, Debug)]
 struct StopTimesParams {
@@ -34,8 +37,17 @@ async fn main() {
     // pass in a database connection pool
     let data = warp::any().map(move || pool.clone());
 
+    let realtime_manager = RealtimeUpdateManager::new();
+    let arc_mutex = Arc::new(Mutex::new(realtime_manager));
+    let arc_mutex_clone = arc_mutex.clone();
+
+    let rt_filter = warp::any().map(move || arc_mutex_clone.clone());
+
     // stop/{code}/..
-    let stop = warp::any().and(data).and(warp::path!("stop" / String / ..));
+    let stop = warp::any()
+        .and(data)
+        .and(rt_filter)
+        .and(warp::path!("stop" / String / ..));
 
     // stop/{code}/times
     let times = stop
@@ -45,7 +57,7 @@ async fn main() {
 
     futures::future::join(
         warp::serve(times).run(([127, 0, 0, 1], 6789)),
-        api_fetcher::fetch_data(),
+        api_fetcher::fetch_data(arc_mutex.clone()),
     )
     .await;
 }
@@ -58,6 +70,7 @@ impl warp::reject::Reject for ServerError {}
 
 async fn fetch_stop_times(
     pool: ConnectionPool,
+    realtime_manager: Arc<Mutex<RealtimeUpdateManager>>,
     stop_code: String,
     params: StopTimesParams,
 ) -> Result<warp::reply::Json, warp::Rejection> {
@@ -78,10 +91,25 @@ async fn fetch_stop_times(
             .bind::<Text, _>(stop_code)
             .load(&connection)
             .map_err(|e| warp::reject::custom(ServerError::DbError(e)))?;
+
+    let realtime = (*realtime_manager.lock().unwrap()).get_realtime_updates(x.iter().map(|y| RealtimeQueryKey {
+        start_date: y.service_date,
+        trip_id: &y.trip_id,
+        stop_sequence: y.stop_sequence as u32, // this should be a positive integer
+    }));
+
     #[derive(serde::Serialize, Debug)]
-    struct R {
-        trips: Vec<model::StopTimeByStop>,
+    struct T {
+        base: model::StopTimeByStop,
+        realtime: RealtimeUpdate
     }
 
-    Ok(warp::reply::json(&R { trips: x }))
+    #[derive(serde::Serialize, Debug)]
+    struct R {
+        trips: Vec<T>,
+    }
+
+    let trips = x.into_iter().zip(realtime).map(|(base, realtime)| T {base, realtime}).collect::<Vec<T>>();
+
+    Ok(warp::reply::json(&R { trips }))
 }

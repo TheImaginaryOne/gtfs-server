@@ -3,7 +3,9 @@ use futures::future::FutureExt;
 use log::{debug, error, info};
 use prost::Message;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
+use crate::gtfs_data::RealtimeUpdateManager;
 use crate::protobuf::gtfs_realtime::FeedMessage;
 
 #[derive(serde::Deserialize)]
@@ -29,7 +31,7 @@ async fn get_realtime_feed_config(path: &str) -> Result<UrlConfig, RealtimeApiEr
     Ok(config)
 }
 
-pub async fn fetch_data() {
+pub async fn fetch_data(realtime_manager: Arc<Mutex<RealtimeUpdateManager>>) {
     let client = reqwest::Client::new();
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
 
@@ -50,10 +52,12 @@ pub async fn fetch_data() {
 
         let timer_future = interval.tick().fuse();
         let c = client.clone();
+        let rm = realtime_manager.clone();
         let request_future = async move {
             match send_request(&c, &config).await {
                 Ok(feed) => {
                     debug!("Fetched {} entities from {}", feed.entity.len(), config.url);
+                    (*rm.lock().unwrap()).load_feed(feed);
                 }
                 Err(e) => {
                     error!("Error fetching gtfs data: {}", e);

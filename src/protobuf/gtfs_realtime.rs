@@ -8,6 +8,7 @@
 /// https://github.com/google/transit/tree/master/gtfs-realtime for field
 /// semantic cardinality.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct FeedMessage {
     /// Metadata about this feed and feed message.
     #[prost(message, required, tag="1")]
@@ -18,6 +19,7 @@ pub struct FeedMessage {
 }
 /// Metadata about a feed, included in feed messages.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct FeedHeader {
     /// Version of the feed specification.
     /// The current version is 2.0.
@@ -39,6 +41,7 @@ pub mod feed_header {
     /// documentation will be updated when those discussions are finalized.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum Incrementality {
         FullDataset = 0,
         Differential = 1,
@@ -46,6 +49,7 @@ pub mod feed_header {
 }
 /// A definition (or update) of an entity in the transit feed.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct FeedEntity {
     /// The ids are used only to provide incrementality support. The id should be
     /// unique within a FeedMessage. Consequent FeedMessages may contain
@@ -101,6 +105,7 @@ pub struct FeedEntity {
 /// Note that the feed provider is allowed, but not required, to purge past
 /// updates - this is one case where this would be practically useful.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct TripUpdate {
     /// The Trip that this message applies to. There can be at most one
     /// TripUpdate entity for each actual trip instance.
@@ -174,6 +179,7 @@ pub mod trip_update {
     /// for the uncertainty to be 0, for example for trains that are driven under
     /// computer timing control.
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(::serde::Serialize)]
     pub struct StopTimeEvent {
         /// Delay (in seconds) can be positive (meaning that the vehicle is late) or
         /// negative (meaning that the vehicle is ahead of schedule). Delay of 0
@@ -200,6 +206,7 @@ pub mod trip_update {
     /// stop_id, so one of the fields below must necessarily be set.
     /// See the documentation in TripDescriptor for more information.
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(::serde::Serialize)]
     pub struct StopTimeUpdate {
         /// Must be the same as in stop_times.txt in the corresponding GTFS feed.
         #[prost(uint32, optional, tag="1")]
@@ -218,6 +225,7 @@ pub mod trip_update {
         /// The relation between this StopTime and the static schedule.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
         #[repr(i32)]
+        #[derive(::serde::Serialize)]
         pub enum ScheduleRelationship {
             /// The vehicle is proceeding in accordance with its static schedule of
             /// stops, although not necessarily according to the times of the schedule.
@@ -239,6 +247,7 @@ pub mod trip_update {
 }
 /// Realtime positioning information for a given vehicle.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct VehiclePosition {
     /// The Trip that this vehicle is serving.
     /// Can be empty or partial if the vehicle can not be identified with a given
@@ -277,6 +286,7 @@ pub struct VehiclePosition {
 pub mod vehicle_position {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum VehicleStopStatus {
         /// The vehicle is just about to arrive at the stop (on a stop
         /// display, the vehicle symbol typically flashes).
@@ -289,6 +299,7 @@ pub mod vehicle_position {
     /// Congestion level that is affecting this vehicle.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum CongestionLevel {
         UnknownCongestionLevel = 0,
         RunningSmoothly = 1,
@@ -302,6 +313,7 @@ pub mod vehicle_position {
     /// future.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum OccupancyStatus {
         /// The vehicle is considered empty by most measures, and has few or no
         /// passengers onboard, but is still accepting passengers.
@@ -330,6 +342,7 @@ pub mod vehicle_position {
 }
 /// An alert, indicating some sort of incident in the public transit network.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct Alert {
     /// Time when the alert should be shown to the user. If missing, the
     /// alert will be shown as long as it appears in the feed.
@@ -358,6 +371,7 @@ pub mod alert {
     /// Cause of this alert.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum Cause {
         UnknownCause = 1,
         /// Not machine-representable.
@@ -378,6 +392,7 @@ pub mod alert {
     /// What is the effect of this problem on the affected entity.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum Effect {
         NoService = 1,
         ReducedService = 2,
@@ -400,6 +415,7 @@ pub mod alert {
 /// A time interval. The interval is considered active at time 't' if 't' is
 /// greater than or equal to the start time and less than the end time.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct TimeRange {
     /// Start time, in POSIX time (i.e., number of seconds since January 1st 1970
     /// 00:00:00 UTC).
@@ -414,6 +430,7 @@ pub struct TimeRange {
 }
 /// A position.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct Position {
     /// Degrees North, in the WGS-84 coordinate system.
     #[prost(float, required, tag="1")]
@@ -445,6 +462,7 @@ pub struct Position {
 ///   TripUpdate are not sufficient, and stop_ids must be provided as well. In
 ///   addition, absolute arrival/departure times must be provided.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct TripDescriptor {
     /// The trip_id from the GTFS feed that this selector refers to.
     /// For non frequency-based trips, this field is enough to uniquely identify
@@ -499,6 +517,7 @@ pub mod trip_descriptor {
     /// shouldn't be marked as SCHEDULED, but likely as ADDED.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
+    #[derive(::serde::Serialize)]
     pub enum ScheduleRelationship {
         /// Trip that is running in accordance with its GTFS schedule, or is close
         /// enough to the scheduled trip to be associated with it.
@@ -516,6 +535,7 @@ pub mod trip_descriptor {
 }
 /// Identification information for the vehicle performing the trip.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct VehicleDescriptor {
     /// Internal system identification of the vehicle. Should be unique per
     /// vehicle, and can be used for tracking the vehicle as it proceeds through
@@ -532,6 +552,7 @@ pub struct VehicleDescriptor {
 }
 /// A selector for an entity in a GTFS feed.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct EntitySelector {
     /// The values of the fields should correspond to the appropriate fields in the
     /// GTFS feed.
@@ -560,6 +581,7 @@ pub struct EntitySelector {
 /// 3. If some translation has an unspecified language code, that translation is
 ///    picked.
 #[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(::serde::Serialize)]
 pub struct TranslatedString {
     /// At least one translation must be provided.
     #[prost(message, repeated, tag="1")]
@@ -567,6 +589,7 @@ pub struct TranslatedString {
 }
 pub mod translated_string {
     #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(::serde::Serialize)]
     pub struct Translation {
         /// A UTF-8 string containing the message.
         #[prost(string, required, tag="1")]
