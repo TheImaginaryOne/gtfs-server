@@ -30,6 +30,8 @@ enum ImporterError {
     NoDataInFile(String),
     #[display(fmt = "Error while parsing csv: {}", _0)]
     CsvError(csv::Error),
+    #[display(fmt = "Error reading env var {}: {}", _0, _1)]
+    EnvVar(String, std::env::VarError),
 }
 impl Error for ImporterError {}
 
@@ -56,7 +58,7 @@ fn run() -> Result<(), ImporterError> {
 
     dotenv().ok();
 
-    let db_url = &std::env::var("DATABASE_URL").expect("env var DATABASE_URL expected to be set");
+    let db_url = &std::env::var("DATABASE_URL").map_err(|e| ImporterError::EnvVar("DATABASE_URL".into(), e))?;
 
     println!("Connecting to {}", db_url);
     let mut client = Client::connect(db_url, NoTls)?;
@@ -150,20 +152,18 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
             let header_columns = header.split(',').collect::<Vec<_>>();
             let arrival_time_idx = header_columns
                 .iter()
-                .position(|r| *r == "arrival_time")
-                .unwrap();
+                .position(|r| *r == "arrival_time");
             let departure_time_idx = header_columns
                 .iter()
-                .position(|r| *r == "departure_time")
-                .unwrap();
+                .position(|r| *r == "departure_time");
 
             for row in reader.records() {
-                let record = row.unwrap(); // todo, ugly code!
+                let record = row?; // todo, ugly code!
                 let new_record = record
                     .iter()
                     .enumerate()
                     .map(|(i, content)| {
-                        if i == arrival_time_idx || i == departure_time_idx {
+                        if Some(i) == arrival_time_idx || Some(i) == departure_time_idx {
                             let x = content
                                 .split(':')
                                 .map(|x| x.parse::<i32>().unwrap())
