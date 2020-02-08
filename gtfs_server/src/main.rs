@@ -12,7 +12,7 @@ use log::{debug, info};
 use serde::Deserialize;
 use warp::Filter;
 
-use crate::gtfs_data::{RealtimeQueryKey, RealtimeUpdateManager, RealtimeUpdate};
+use crate::gtfs_data::{RealtimeQueryKey, RealtimeUpdate, RealtimeUpdateManager};
 use database::ConnectionPool;
 use dotenv::dotenv;
 
@@ -92,16 +92,18 @@ async fn fetch_stop_times(
             .load(&connection)
             .map_err(|e| warp::reject::custom(ServerError::DbError(e)))?;
 
-    let realtime = (*realtime_manager.lock().unwrap()).get_realtime_updates(x.iter().map(|y| RealtimeQueryKey {
-        start_date: y.service_date,
-        trip_id: &y.trip_id,
-        stop_sequence: y.stop_sequence as u32, // this should be a positive integer
+    let realtime = (*realtime_manager.lock().unwrap()).get_realtime_updates(x.iter().map(|y| {
+        RealtimeQueryKey {
+            start_date: y.service_date,
+            trip_id: &y.trip_id,
+            stop_sequence: y.stop_sequence as u32, // this should be a positive integer
+        }
     }));
 
     #[derive(serde::Serialize, Debug)]
     struct T {
         base: model::StopTimeByStop,
-        realtime: RealtimeUpdate
+        realtime: RealtimeUpdate,
     }
 
     #[derive(serde::Serialize, Debug)]
@@ -109,7 +111,11 @@ async fn fetch_stop_times(
         trips: Vec<T>,
     }
 
-    let trips = x.into_iter().zip(realtime).map(|(base, realtime)| T {base, realtime}).collect::<Vec<T>>();
+    let trips = x
+        .into_iter()
+        .zip(realtime)
+        .map(|(base, realtime)| T { base, realtime })
+        .collect::<Vec<T>>();
 
     Ok(warp::reply::json(&R { trips }))
 }
