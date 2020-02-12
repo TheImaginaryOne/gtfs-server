@@ -1070,6 +1070,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_cpus"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46203554f085ff89c235cd12f7075f3233af9b11ed7c9e16dfe2560d03313ce6"
+dependencies = [
+ "hermit-abi",
+ "libc",
+]
+
+[[package]]
 name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,6 +1264,20 @@ name = "podio"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "780fb4b6698bbf9cf2444ea5d22411cef2953f0824b98f33cf454ec5615645bd"
+
+[[package]]
+name = "postgres"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47cb5f148a31d981d6a5f88f82c6fcc9b5aeb1b6c626d56568f9e007308acfbf"
+dependencies = [
+ "bytes 0.5.4",
+ "fallible-iterator",
+ "futures",
+ "log 0.4.8",
+ "tokio",
+ "tokio-postgres",
+]
 
 [[package]]
 name = "postgres-protocol"
@@ -1978,6 +2002,7 @@ dependencies = [
  "memchr",
  "mio",
  "mio-uds",
+ "num_cpus",
  "pin-project-lite",
  "slab",
  "tokio-macros",
@@ -2064,14 +2089,13 @@ dependencies = [
  "derive_more",
  "dotenv",
  "futures",
- "futures-util",
  "indicatif",
+ "postgres",
  "reqwest",
  "serde",
  "structopt",
  "tempfile",
  "tokio",
- "tokio-postgres",
  "zip",
 ]
 

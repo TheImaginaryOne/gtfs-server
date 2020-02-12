@@ -1,11 +1,11 @@
 use bytes::buf::BufMutExt;
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 use dotenv::dotenv;
-use futures_util::sink::SinkExt;
+use postgres::{Client, NoTls};
 use tokio::io::AsyncWriteExt;
-use tokio_postgres::{Client, NoTls};
 
 use std::error::Error;
+use std::io::Write;
 use std::path::Path;
 
 use structopt::StructOpt;
@@ -28,7 +28,7 @@ static TABLE_AND_FILE_NAMES: [(&str, &str); 8] = [
 #[derive(Debug, From, Display)]
 enum ImporterError {
     #[display(fmt = "Database error: {}", _0)]
-    DbError(tokio_postgres::Error),
+    DbError(postgres::Error),
     #[display(fmt = "File error: {}", _0)]
     FileError(std::io::Error),
     #[display(fmt = "{} file should have data", _0)]
@@ -62,14 +62,14 @@ enum Options {
         feed_id: u32,
     },
 }
-#[tokio::main]
-async fn main() {
-    match run().await {
+
+fn main() {
+    match run() {
         Ok(()) => println!("Successful!"),
         Err(e) => eprintln!("{}", e),
     }
 }
-async fn run() -> Result<(), ImporterError> {
+fn run() -> Result<(), ImporterError> {
     let options = Options::from_args();
 
     dotenv().ok();
@@ -78,89 +78,86 @@ async fn run() -> Result<(), ImporterError> {
         .map_err(|e| ImporterError::EnvVar("DATABASE_URL".into(), e))?;
 
     println!("Connecting to {}", db_url);
-    let (mut client, connection) = tokio_postgres::connect(db_url, NoTls).await?;
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
+    let mut client = postgres::Client::connect(db_url, NoTls)?;
 
     match options {
-        Options::Import { path } => import(path, &mut client).await,
-        Options::DeleteFeed { feed_id } => delete_feed(feed_id, &mut client).await,
-        Options::Download { tf_feed_id } => download(tf_feed_id, &mut client).await,
+        Options::Import { path } => import(path, &mut client),
+        Options::DeleteFeed { feed_id } => delete_feed(feed_id, &mut client),
+        Options::Download { tf_feed_id } => download(tf_feed_id, &mut client),
     }
 }
 // todo async
-async fn delete_feed(feed_id: u32, client: &mut Client) -> Result<(), ImporterError> {
-    let transaction = client.transaction().await?;
+fn delete_feed(feed_id: u32, client: &mut Client) -> Result<(), ImporterError> {
+    let mut transaction = client.transaction()?;
     println!("Deleting data with feed_id = {}", feed_id);
 
     // rev to avoid foreign key violations
     for s in TABLE_AND_FILE_NAMES.iter().rev() {
         println!("Deleting from table {}", &s.1);
-        transaction
-            .execute(
-                &format!("delete from {} where feed_id={}", &s.1, &feed_id)[..],
-                &[],
-            )
-            .await?;
+        transaction.execute(
+            &format!("delete from {} where feed_id={}", &s.1, &feed_id)[..],
+            &[],
+        )?;
     }
     println!("Deleting from table feed");
-    transaction
-        .execute(
-            &format!("delete from feed where feed_id={}", &feed_id)[..],
-            &[],
-        )
-        .await?;
+    transaction.execute(
+        &format!("delete from feed where feed_id={}", &feed_id)[..],
+        &[],
+    )?;
 
-    transaction.commit().await?;
+    transaction.commit()?;
     Ok(())
 }
 
-async fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> {
+fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> {
     let tf_key = &std::env::var("TRANSITFEEDS_KEY")
         .map_err(|e| ImporterError::EnvVar("TRANSITFEEDS_KEY".into(), e))?;
 
-    let mut async_file = tokio::task::spawn_blocking(|| {
-        let temp_file = tempfile::tempfile()?;
-        Ok::<tokio::fs::File, ImporterError>(tokio::fs::File::from_std(temp_file))
-    })
-    .await??;
+    let temp_file = tempfile::tempfile()?;
+    let mut async_file = tokio::fs::File::from_std(temp_file);
+
+    let mut runtime = tokio::runtime::Runtime::new()?;
 
     println!("Downloading latest feed");
 
-    let client = reqwest::Client::new();
+    // TODO: workaround, reqwest has no blocking Response::chunk()
+    runtime.block_on(async {
+        let client = reqwest::Client::new();
 
-    let mut response = client
-        .get("https://api.transitfeeds.com/v1/getLatestFeedVersion")
-        .query(&[("key".to_string(), tf_key), ("feed".to_string(), &feed_id)])
-        .send()
-        .await?;
+        let mut response = client
+            .get("https://api.transitfeeds.com/v1/getLatestFeedVersion")
+            .query(&[("key".to_string(), tf_key), ("feed".to_string(), &feed_id)])
+            .send()
+            .await?;
 
-    if let Some(l) = response.content_length() {
-        let bar = ProgressBar::new(l);
-        bar.set_style(ProgressStyle::default_bar().progress_chars("=> ").template(
-            "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}",
-        ));
+        if let Some(l) = response.content_length() {
+            let bar = ProgressBar::new(l);
+            bar.enable_steady_tick(200);
 
-        while let Some(chunk) = response.chunk().await? {
-            bar.inc(chunk.len() as u64);
-            async_file.write(&chunk).await?;
+            bar.set_style(ProgressStyle::default_bar().progress_chars("█▉▊▋▌▍▎▏  ").template(
+                "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}",
+            ));
+
+            while let Some(chunk) = response.chunk().await? {
+                bar.inc(chunk.len() as u64);
+                async_file.write(&chunk).await?;
+            }
         }
-    }
+        Ok::<(), ImporterError>(())
+    })?;
 
-    // unwrap should work, as we have finished all async io operations.
-    let mut zip = zip::ZipArchive::new(async_file.try_into_std().unwrap())?;
+    // unwrap should work, as we have finished all io operations.
 
     let temp_folder = tempfile::tempdir()?;
     let temp_folder_path = temp_folder.path();
 
+    let mut zip = zip::ZipArchive::new(async_file.try_into_std().unwrap())?;
+
     let bar = ProgressBar::new(zip.len() as u64);
+    bar.enable_steady_tick(200);
     bar.set_style(
         ProgressStyle::default_bar()
-            .progress_chars("=> ")
+            .progress_chars("█▉▊▋▌▍▎▏  ")
             .template("Writing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}"),
     );
 
@@ -173,38 +170,35 @@ async fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterE
 
         let file_path = std::path::PathBuf::from(temp_folder_path).join(file_name);
         let mut new_file = std::fs::File::create(file_path)?;
-        std::io::copy(&mut inner, &mut new_file)?;
 
+        std::io::copy(&mut inner, &mut new_file)?;
         bar.inc(1);
     }
 
     Ok(())
 }
 
-async fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
+fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
     let path = Path::new(&p);
 
     println!("Importing data");
 
-    let transaction = client.transaction().await?;
+    let mut transaction = client.transaction()?;
 
     let feed_id: i32 = transaction
-        .query("insert into feed default values returning feed_id", &[])
-        .await?
+        .query("insert into feed default values returning feed_id", &[])?
         .first()
         .unwrap()
         .get(0);
 
     for s in &TABLE_AND_FILE_NAMES {
-        transaction
-            .execute(
-                &format!(
-                    "alter table {} alter column feed_id set default {}",
-                    s.1, feed_id
-                )[..],
-                &[],
-            )
-            .await?;
+        transaction.execute(
+            &format!(
+                "alter table {} alter column feed_id set default {}",
+                s.1, feed_id
+            )[..],
+            &[],
+        )?;
 
         let file_path = path.join(&s.0);
         println!("Reading from {}", &file_path.display());
@@ -235,8 +229,7 @@ async fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
         );
         println!("Running: {}", &command);
 
-        let writer = transaction.copy_in(&command[..]).await?;
-        futures::pin_mut!(writer);
+        let mut writer = transaction.copy_in(&command[..])?;
 
         println!("Writing data");
 
@@ -269,21 +262,19 @@ async fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
                     csv_writer.write_record(new_record)?;
                 }
             }
-            writer.send(buffer.into_inner().freeze()).await?;
+            writer.write_all(&buffer.into_inner())?;
         } else {
-            writer.send(Bytes::from(file_content)).await?;
+            writer.write_all(file_content.as_bytes())?;
         }
         println!("Committing to database");
 
-        writer.finish().await?;
+        writer.finish()?;
 
-        transaction
-            .execute(
-                &format!("alter table {} alter column feed_id drop default", s.1)[..],
-                &[],
-            )
-            .await?;
+        transaction.execute(
+            &format!("alter table {} alter column feed_id drop default", s.1)[..],
+            &[],
+        )?;
     }
-    transaction.commit().await?;
+    transaction.commit()?;
     Ok(())
 }
