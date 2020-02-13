@@ -12,7 +12,7 @@ use structopt::StructOpt;
 
 use derive_more::{Display, From};
 
-use indicatif::{ProgressBar, ProgressStyle};
+mod utils;
 
 static TABLE_AND_FILE_NAMES: [(&str, &str); 8] = [
     ("shapes.txt", "shape"),
@@ -81,7 +81,7 @@ fn run() -> Result<(), ImporterError> {
     let mut client = postgres::Client::connect(db_url, NoTls)?;
 
     match options {
-        Options::Import { path } => import(path, &mut client),
+        Options::Import { path } => import(&Path::new(&path), &mut client),
         Options::DeleteFeed { feed_id } => delete_feed(feed_id, &mut client),
         Options::Download { tf_feed_id } => download(tf_feed_id, &mut client),
     }
@@ -91,25 +91,27 @@ fn delete_feed(feed_id: u32, client: &mut Client) -> Result<(), ImporterError> {
     let mut transaction = client.transaction()?;
     println!("Deleting data with feed_id = {}", feed_id);
 
+    let bar = utils::progress_bar(TABLE_AND_FILE_NAMES.len() as u64, "Deleting {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
     // rev to avoid foreign key violations
     for s in TABLE_AND_FILE_NAMES.iter().rev() {
-        println!("Deleting from table {}", &s.1);
+        bar.println(format!("Deleting from table {}", &s.1));
         transaction.execute(
             &format!("delete from {} where feed_id={}", &s.1, &feed_id)[..],
             &[],
         )?;
+        bar.inc(1);
     }
-    println!("Deleting from table feed");
     transaction.execute(
         &format!("delete from feed where feed_id={}", &feed_id)[..],
         &[],
     )?;
-
     transaction.commit()?;
+    bar.finish_and_clear();
+    
     Ok(())
 }
 
-fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> {
+fn download(feed_id: String, client: &mut Client) -> Result<(), ImporterError> {
     let tf_key = &std::env::var("TRANSITFEEDS_KEY")
         .map_err(|e| ImporterError::EnvVar("TRANSITFEEDS_KEY".into(), e))?;
 
@@ -129,14 +131,9 @@ fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> 
             .query(&[("key".to_string(), tf_key), ("feed".to_string(), &feed_id)])
             .send()
             .await?;
-
+        dbg!(response.headers());
         if let Some(l) = response.content_length() {
-            let bar = ProgressBar::new(l);
-
-            bar.set_style(ProgressStyle::default_bar().progress_chars("█▉▊▋▌▍▎▏  ").template(
-                "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}",
-            ));
-            bar.enable_steady_tick(200);
+            let bar = utils::progress_bar(l as u64, "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}");
             while let Some(chunk) = response.chunk().await? {
                 bar.inc(chunk.len() as u64);
                 async_file.write(&chunk).await?;
@@ -152,13 +149,7 @@ fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> 
 
     let mut zip = zip::ZipArchive::new(async_file.try_into_std().unwrap())?;
 
-    let bar = ProgressBar::new(zip.len() as u64);
-    bar.enable_steady_tick(200);
-    bar.set_style(
-        ProgressStyle::default_bar()
-            .progress_chars("█▉▊▋▌▍▎▏  ")
-            .template("Writing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}"),
-    );
+    let bar = utils::progress_bar(zip.len() as u64, "Writing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
 
     for i in 0..zip.len() {
         let mut inner = zip.by_index(i)?;
@@ -173,12 +164,13 @@ fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> 
         std::io::copy(&mut inner, &mut new_file)?;
         bar.inc(1);
     }
+    bar.finish_and_clear();
+    import(temp_folder_path, client)?;
 
     Ok(())
 }
 
-fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
-    let path = Path::new(&p);
+fn import(path: &Path, client: &mut Client) -> Result<(), ImporterError> {
 
     println!("Importing data");
 
@@ -190,6 +182,9 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
         .unwrap()
         .get(0);
 
+    let bar = utils::progress_bar(TABLE_AND_FILE_NAMES.len() as u64, "Importing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
+
+    // TODO support optional tables
     for s in &TABLE_AND_FILE_NAMES {
         transaction.execute(
             &format!(
@@ -200,7 +195,7 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
         )?;
 
         let file_path = path.join(&s.0);
-        println!("Reading from {}", &file_path.display());
+        bar.println(format!("Reading from {}", &file_path.display()));
 
         let file_content = std::fs::read_to_string(&file_path)?;
 
@@ -226,11 +221,11 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
             "copy {}({}) from stdin delimiter ',' csv header;",
             s.1, header
         );
-        println!("Running: {}", &command);
+        bar.println(format!("Running: {}", &command));
 
         let mut writer = transaction.copy_in(&command[..])?;
 
-        println!("Writing data");
+        bar.println("Writing data");
 
         if s.1 == "stop_time" {
             let mut buffer = BytesMut::new().writer();
@@ -265,7 +260,7 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
         } else {
             writer.write_all(file_content.as_bytes())?;
         }
-        println!("Committing to database");
+        bar.println("Committing to database");
 
         writer.finish()?;
 
@@ -273,7 +268,9 @@ fn import(p: String, client: &mut Client) -> Result<(), ImporterError> {
             &format!("alter table {} alter column feed_id drop default", s.1)[..],
             &[],
         )?;
+        bar.inc(1);
     }
+    bar.finish_and_clear();
     transaction.commit()?;
     Ok(())
 }
