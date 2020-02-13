@@ -132,12 +132,11 @@ fn download(feed_id: String, _client: &mut Client) -> Result<(), ImporterError> 
 
         if let Some(l) = response.content_length() {
             let bar = ProgressBar::new(l);
-            bar.enable_steady_tick(200);
 
             bar.set_style(ProgressStyle::default_bar().progress_chars("█▉▊▋▌▍▎▏  ").template(
                 "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}",
             ));
-
+            bar.enable_steady_tick(200);
             while let Some(chunk) = response.chunk().await? {
                 bar.inc(chunk.len() as u64);
                 async_file.write(&chunk).await?;
