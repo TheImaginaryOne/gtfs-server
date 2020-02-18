@@ -61,7 +61,7 @@ impl RealtimeUpdateManager {
     pub fn get_realtime_updates<'a, I: IntoIterator<Item = RealtimeQueryKey<'a>>>(
         &self,
         keys: I,
-    ) -> Vec<RealtimeUpdate> {
+    ) -> Vec<Option<RealtimeUpdate>> {
         keys.into_iter()
             .map(|key| {
                 dbg!(key.start_date, &key.trip_id);
@@ -96,13 +96,9 @@ impl RealtimeUpdateManager {
                         }
                         realtime_data.vehicle = trip_update.vehicle.clone();
 
-                        realtime_data
+                        Some(realtime_data)
                     }
-                    None => RealtimeUpdate {
-                        delay: None,
-                        schedule_relationship: None,
-                        vehicle: None,
-                    },
+                    None => None,
                 }
             })
             .collect::<Vec<_>>()

@@ -91,7 +91,10 @@ fn delete_feed(feed_id: u32, client: &mut Client) -> Result<(), ImporterError> {
     let mut transaction = client.transaction()?;
     println!("Deleting data with feed_id = {}", feed_id);
 
-    let bar = utils::progress_bar(TABLE_AND_FILE_NAMES.len() as u64, "Deleting {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
+    let bar = utils::progress_bar(
+        TABLE_AND_FILE_NAMES.len() as u64,
+        "Deleting {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}",
+    );
     // rev to avoid foreign key violations
     for s in TABLE_AND_FILE_NAMES.iter().rev() {
         bar.println(format!("Deleting from table {}", &s.1));
@@ -107,7 +110,7 @@ fn delete_feed(feed_id: u32, client: &mut Client) -> Result<(), ImporterError> {
     )?;
     transaction.commit()?;
     bar.finish_and_clear();
-    
+
     Ok(())
 }
 
@@ -133,7 +136,10 @@ fn download(feed_id: String, client: &mut Client) -> Result<(), ImporterError> {
             .await?;
         dbg!(response.headers());
         if let Some(l) = response.content_length() {
-            let bar = utils::progress_bar(l as u64, "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}");
+            let bar = utils::progress_bar(
+                l as u64,
+                "Downloading {spinner} [{elapsed_precise}] [{bar:60.yellow}] {bytes}/{total_bytes}",
+            );
             while let Some(chunk) = response.chunk().await? {
                 bar.inc(chunk.len() as u64);
                 async_file.write(&chunk).await?;
@@ -149,7 +155,10 @@ fn download(feed_id: String, client: &mut Client) -> Result<(), ImporterError> {
 
     let mut zip = zip::ZipArchive::new(async_file.try_into_std().unwrap())?;
 
-    let bar = utils::progress_bar(zip.len() as u64, "Writing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
+    let bar = utils::progress_bar(
+        zip.len() as u64,
+        "Writing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}",
+    );
 
     for i in 0..zip.len() {
         let mut inner = zip.by_index(i)?;
@@ -171,7 +180,6 @@ fn download(feed_id: String, client: &mut Client) -> Result<(), ImporterError> {
 }
 
 fn import(path: &Path, client: &mut Client) -> Result<(), ImporterError> {
-
     println!("Importing data");
 
     let mut transaction = client.transaction()?;
@@ -182,7 +190,10 @@ fn import(path: &Path, client: &mut Client) -> Result<(), ImporterError> {
         .unwrap()
         .get(0);
 
-    let bar = utils::progress_bar(TABLE_AND_FILE_NAMES.len() as u64, "Importing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}");
+    let bar = utils::progress_bar(
+        TABLE_AND_FILE_NAMES.len() as u64,
+        "Importing {spinner} [{elapsed_precise}] [{bar:60.yellow}] {pos}/{len}",
+    );
 
     // TODO support optional tables
     for s in &TABLE_AND_FILE_NAMES {

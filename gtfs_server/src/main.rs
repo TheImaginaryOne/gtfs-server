@@ -13,6 +13,7 @@ use serde::Deserialize;
 use warp::Filter;
 
 use crate::gtfs_data::{RealtimeQueryKey, RealtimeUpdate, RealtimeUpdateManager};
+use chrono::prelude::*;
 use database::ConnectionPool;
 use dotenv::dotenv;
 
@@ -80,13 +81,14 @@ async fn fetch_stop_times(
     use diesel::sql_types::Text;
 
     let now = chrono::Utc::now();
+    // TODO 30 is a magic value to handle delays
     let a = now - chrono::Duration::minutes(params.range_start_mins.unwrap_or(2).into());
     let b = now + chrono::Duration::minutes(params.range_end_mins.unwrap_or(720).into());
     debug!("now: {}, from -{} to {}", now, a, b);
 
     let x: Vec<model::StopTimeByStop> =
         diesel::sql_query(include_str!("sql_queries/stop_times.sql"))
-            .bind::<Timestamptz, _>(a)
+            .bind::<Timestamptz, _>(a - chrono::Duration::minutes(30))
             .bind::<Timestamptz, _>(b)
             .bind::<Text, _>(stop_code)
             .load(&connection)
@@ -103,19 +105,54 @@ async fn fetch_stop_times(
     #[derive(serde::Serialize, Debug)]
     struct T {
         base: model::StopTimeByStop,
-        realtime: RealtimeUpdate,
+        realtime: Option<CombinedRealtimeUpdate>,
     }
 
     #[derive(serde::Serialize, Debug)]
     struct R {
+        // for client to get accurate UTC time
+        current_time: DateTime<Utc>,
         trips: Vec<T>,
+    }
+    #[derive(serde::Serialize, Debug)]
+    struct CombinedRealtimeUpdate {
+        departure_time: DateTime<Utc>,
+        #[serde(flatten)]
+        realtime_update: RealtimeUpdate,
     }
 
     let trips = x
         .into_iter()
         .zip(realtime)
-        .map(|(base, realtime)| T { base, realtime })
+        .filter_map(|(base, realtime)| match realtime {
+            Some(realtime) => {
+                let departure_time = base.departure_time
+                    + chrono::Duration::seconds(realtime.delay.unwrap_or(0) as i64);
+                if departure_time > b || departure_time < a {
+                    return None;
+                }
+                Some(T {
+                    base,
+                    realtime: Some(CombinedRealtimeUpdate {
+                        realtime_update: realtime,
+                        departure_time,
+                    }),
+                })
+            }
+            None => {
+                if base.departure_time > b || base.departure_time < a {
+                    return None;
+                }
+                Some(T {
+                    base,
+                    realtime: None,
+                })
+            }
+        })
         .collect::<Vec<T>>();
 
-    Ok(warp::reply::json(&R { trips }))
+    Ok(warp::reply::json(&R {
+        current_time: now,
+        trips,
+    }))
 }

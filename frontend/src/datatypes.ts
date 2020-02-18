@@ -16,6 +16,7 @@ export interface BaseStopTime {
 }
 export interface RealtimeUpdate { 
     delay?: Number,
+    departure_time?: String,
     schedule_relationship?: Number,
     vehicle?: VehicleDescriptor
 }
