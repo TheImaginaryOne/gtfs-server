@@ -45,13 +45,13 @@ export default class Timetable extends Vue {
 
   get departureTimeMinutes(): number[] | undefined {
     return this.timetableData?.map(x => {
-      let minutes = moment.duration(
-        moment(x.realtime? x.realtime.departure_time: x.base.departure_time).diff(moment())
+      const minutes = moment.duration(
+        moment(x.realtime ? x.realtime.departure_time : x.base.departure_time).diff(moment())
       ).asMinutes()
       if (minutes > 0) {
-        return Math.floor(minutes);
+        return Math.floor(minutes)
       } else {
-        return Math.ceil(minutes);
+        return Math.ceil(minutes)
       }
     })
   }

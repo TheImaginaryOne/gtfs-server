@@ -1,27 +1,27 @@
 export interface TimetableUpdate {
-    base: BaseStopTime,
-    realtime: RealtimeUpdate
+  base: BaseStopTime,
+  realtime: RealtimeUpdate
 }
 export interface BaseStopTime {
-    stop_id: String,
-    trip_id: String,
-    departure_time: String,
-    service_date: String,
-    stop_sequence: Number,
-    direction_id?: Boolean,
-    trip_headsign?: String,
-    route_short_name?: String,
-    route_long_name?: String,
-    route_type: Number
+  stop_id: string,
+  trip_id: string,
+  departure_time: string,
+  service_date: string,
+  stop_sequence: number,
+  direction_id?: Boolean,
+  trip_headsign?: string,
+  route_short_name?: string,
+  route_long_name?: string,
+  route_type: number
 }
 export interface RealtimeUpdate { 
-    delay?: Number,
-    departure_time?: String,
-    schedule_relationship?: Number,
-    vehicle?: VehicleDescriptor
+  delay?: number,
+  departure_time?: string,
+  schedule_relationship?: number,
+  vehicle?: VehicleDescriptor
 }
 export interface VehicleDescriptor {
-    id: String,
-    label?: String,
-    license_plate?: String
+  id: string,
+  label?: string,
+  license_plate?: string
 }
