@@ -16,7 +16,6 @@ import SideBar from './components/SideBar.vue'
     }
 })
 export default class App extends Vue {
-    message = "Hello!"
 }
 </script>
 
@@ -26,7 +25,7 @@ body {
     padding: 0;
 }
 #app {
-    font-family: "Fira Sans", Arial, sans-serif;
+    font-family: "Roboto", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
