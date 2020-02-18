@@ -31,7 +31,7 @@ with sd as materialized (
 		and st.departure_time <= extract (epoch from ($2 - sd.service_date_midnight))
 	--where st.stop_id = '0133-20191217130301_v86.30' or st.stop_id = '0116-20191205152914_v86.28'
 	--where st.stop_id = '0116-20191217130301_v86.30' or st.stop_id = '0116-20191205152914_v86.28'
-	where (st.pickup_type is null or st.pickup_type != 2)
+	where (st.pickup_type is null or st.pickup_type != 1)
 )
 (
 select
