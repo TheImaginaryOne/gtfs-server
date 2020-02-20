@@ -64,7 +64,6 @@ impl RealtimeUpdateManager {
     ) -> Vec<Option<RealtimeUpdate>> {
         keys.into_iter()
             .map(|key| {
-                dbg!(key.start_date, &key.trip_id);
                 match self
                     .trip_updates
                     .get(&TripUpdateKeyRef(key.start_date, &key.trip_id))
@@ -81,21 +80,27 @@ impl RealtimeUpdateManager {
                             .iter()
                             .take_while(|s| Some(key.stop_sequence) >= s.stop_sequence)
                             .last();
+                        //dbg!(&trip_update.trip, &trip_update.stop_time_update, &stop_time_update_opt, &key.stop_sequence);
 
                         if let Some(stop_time_update) = stop_time_update_opt {
+
                             if let Some(stop_event) = &stop_time_update.departure {
                                 if let Some(delay) = stop_event.delay {
                                     realtime_data.delay = Some(delay);
-                                } else {
-                                    warn!("No departure delay info found");
+                                }
+                            } else {
+                                if let Some(stop_event) = &stop_time_update.arrival {
+                                    if let Some(delay) = stop_event.delay {
+                                        realtime_data.delay = Some(delay);
+                                    } else {
+                                        warn!("No departure delay info found");
+                                    }
                                 }
                             }
-
                             realtime_data.schedule_relationship =
                                 stop_time_update.schedule_relationship;
                         }
                         realtime_data.vehicle = trip_update.vehicle.clone();
-
                         Some(realtime_data)
                     }
                     None => None,
