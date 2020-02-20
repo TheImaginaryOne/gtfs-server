@@ -9,19 +9,15 @@
           </div>
           <div class="route-additional-info">
             <div class="route-vehicle" v-if="update.realtime !== null && update.realtime.vehicle !== null">
-              Vehicle: {{update.realtime.vehicle.label}} </div>
+              Vehicle: {{update.realtime.vehicle.label}}
+            </div>
           </div>
         </div>
         <div class="route-time-column">
-          <div class="route-time">{{ departureTimeMinutes[i] }} min</div>
-          <div class="time-additional-info">
-            <span v-if="update.realtime !== null && update.realtime.delay !== null">
-              Delayed {{Math.floor(update.realtime.delay / 60)}} min
-            </span>
-            <span v-else>
-              Scheduled
-            </span>
-          </div>
+          <StopTimeUpdate
+            :dueTime="computedData[i].dueTime"
+            :stopTime="computedData[i].departureTime"
+            :delay="update.realtime !== null ? update.realtime.delay : null"/>
         </div>
       </div>
     </div>
@@ -32,26 +28,33 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import { TimetableUpdate } from '../datatypes'
 import moment from 'moment'
+import StopTimeUpdate from './StopTimeUpdate.vue'
+
+interface ComputedData {
+  dueTime: number;
+  departureTime: moment.Moment;
+}
 
 @Component({
-  components: {}
+  components: { StopTimeUpdate }
 })
 export default class Timetable extends Vue {
   @Prop()
-  private timetableData?: TimetableUpdate[]
+  private timetableData!: TimetableUpdate[]
 
   @Prop()
   private error?: string
 
-  get departureTimeMinutes(): number[] | undefined {
-    return this.timetableData?.map(x => {
-      const minutes = moment.duration(
-        moment(x.realtime ? x.realtime.departure_time : x.base.departure_time).diff(moment())
-      ).asMinutes()
-      if (minutes > 0) {
-        return Math.floor(minutes)
-      } else {
-        return Math.ceil(minutes)
+  get computedData(): ComputedData[] {
+    return this.timetableData.map(x => {
+      const departureTime = moment(x.realtime !== null ? x.realtime.departure_time : x.base.departure_time)
+      const dueTime = moment.duration(
+        departureTime.diff(moment())
+      ).asSeconds()
+
+      return {
+        dueTime: dueTime,
+        departureTime: departureTime
       }
     })
   }
@@ -85,20 +88,13 @@ export default class Timetable extends Vue {
 .route-additional-info {
   padding-top: 4px;
   display: flex;
+  color: #777;
 }
 .route-vehicle {
-  color: #777;
 }
 
 .route-time-column {
   padding: 2px 0;
   padding-left: 16px;
-}
-.route-time {
-  font-size: 20px;
-}
-.time-additional-info {
-  padding-top: 4px;
-  color: #777;
 }
 </style>
