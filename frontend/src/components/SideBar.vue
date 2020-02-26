@@ -3,7 +3,7 @@
     <div class="sidebar-container">
       <InputBar @submit="submit" />
     </div>
-    <div class="sidebar-container">
+    <div class="sidebar-container-timetable">
       <Timetable :timetableData="timetableData" />
     </div>
   </div>
@@ -43,7 +43,17 @@ export default class SideBar extends Vue {
 </script>
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
 .sidebar-container {
-  padding: 0.5rem 1rem;
+  padding: 8px 16px;
+}
+.sidebar-container-timetable {
+  padding: 0 16px;
+  max-height: 100%;
+  overflow-y: scroll;
 }
 </style>
