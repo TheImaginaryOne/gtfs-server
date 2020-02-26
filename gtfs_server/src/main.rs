@@ -66,8 +66,15 @@ async fn main() {
 #[derive(Debug)]
 enum ServerError {
     DbError(diesel::result::Error),
+    TokioError(tokio::task::JoinError),
 }
 impl warp::reject::Reject for ServerError {}
+
+impl Into<warp::reject::Rejection> for ServerError {
+    fn into(self) -> warp::reject::Rejection {
+        warp::reject::custom(self)
+    }
+}
 
 async fn fetch_stop_times(
     pool: ConnectionPool,
@@ -86,13 +93,15 @@ async fn fetch_stop_times(
     let b = now + chrono::Duration::minutes(params.range_end_mins.unwrap_or(720).into());
     debug!("now: {}, from -{} to {}", now, a, b);
 
-    let x: Vec<model::StopTimeByStop> =
-        diesel::sql_query(include_str!("sql_queries/stop_times.sql"))
+    let x: Vec<model::StopTimeByStop> = tokio::task::spawn_blocking(move || {
+        let r = diesel::sql_query(include_str!("sql_queries/stop_times.sql"))
             .bind::<Timestamptz, _>(a - chrono::Duration::minutes(30))
             .bind::<Timestamptz, _>(b)
             .bind::<Text, _>(stop_code)
             .load(&connection)
             .map_err(|e| warp::reject::custom(ServerError::DbError(e)))?;
+        Ok::<_, warp::reject::Rejection>(r)
+    }).await.map_err(|e| warp::reject::custom(ServerError::TokioError(e)))??;
 
     let realtime = (*realtime_manager.lock().unwrap()).get_realtime_updates(x.iter().map(|y| {
         RealtimeQueryKey {
