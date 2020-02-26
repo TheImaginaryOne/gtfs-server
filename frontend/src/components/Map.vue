@@ -12,9 +12,11 @@ export default class Map extends Vue {
   map!: mapboxgl.Map;
 
   mounted() {
+  console.log(process.env.VUE_APP_MAP_URL)
     this.map = new mapboxgl.Map({
       container: 'map',
-      style: 'https://api.maptiler.com/maps/streets/style.json?key=HMG6TdCwKKBPhZzmLSn5',
+      // define in .env.local
+      style: process.env.VUE_APP_MAP_URL,
       center: [0, 0],
       zoom: 3
     })
