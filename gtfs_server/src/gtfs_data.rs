@@ -214,45 +214,41 @@ mod tests {
         m.load_feed(feed);
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 1)]),
-            vec![RealtimeUpdate {
+            vec![Some(RealtimeUpdate {
                 delay: None,
                 schedule_relationship: None,
                 vehicle: None,
-            }]
+            })]
         );
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 3)]),
-            vec![RealtimeUpdate {
+            vec![Some(RealtimeUpdate {
                 delay: Some(20),
                 schedule_relationship: None,
                 vehicle: None,
-            }]
+            })]
         );
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 5)]),
-            vec![RealtimeUpdate {
+            vec![Some(RealtimeUpdate {
                 delay: Some(-10),
                 schedule_relationship: None,
                 vehicle: None,
-            }]
+            })]
         );
 
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip2", 3)]),
-            vec![RealtimeUpdate {
+            vec![Some(RealtimeUpdate {
                 delay: Some(180),
                 schedule_relationship: Some(0),
                 vehicle: None,
-            }]
+            })]
         );
         // different date
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 2), "trip1", 5)]),
-            vec![RealtimeUpdate {
-                delay: None,
-                schedule_relationship: None,
-                vehicle: None,
-            }]
+            vec![None]
         );
     }
     #[test]
@@ -267,11 +263,11 @@ mod tests {
 
         assert_eq!(
             m.get_realtime_updates(vec![r(NaiveDate::from_ymd(2020, 1, 1), "trip1", 2)]),
-            vec![RealtimeUpdate {
+            vec![Some(RealtimeUpdate {
                 delay: None,
                 schedule_relationship: None,
                 vehicle: Some(v("train1", "AT1345")),
-            }]
+            })]
         );
     }
 }
